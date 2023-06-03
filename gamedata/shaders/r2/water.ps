@@ -1,0 +1,109 @@
+#include "common.h"
+#include "pbs.h"
+
+struct   vf
+{
+	float2		hpos		:	VPOS;
+	float2		tbase		:	TEXCOORD0;  // base
+	float2		tnorm0		:	TEXCOORD1;  // nm0
+	float2		tnorm1		:	TEXCOORD2;  // nm1
+	half3		M1		:	TEXCOORD3;
+	half3		M2		:	TEXCOORD4;
+	half3		M3		:	TEXCOORD5;
+	half3		v2point		:	TEXCOORD6;
+#ifdef	USE_SOFT_WATER
+#ifdef	NEED_SOFT_WATER
+	float4		tctexgen	:	TEXCOORD7;
+#endif	//	USE_SOFT_WATER
+#endif	//	NEED_SOFT_WATER	
+	half4		c0		:	COLOR0;
+	float		fog		:	FOG;
+};
+
+uniform sampler2D	s_nmap;
+uniform samplerCUBE	s_env0;
+uniform samplerCUBE	s_env1;
+uniform sampler2D	s_leaves;
+
+#if defined(USE_SOFT_WATER) && defined(NEED_SOFT_WATER)
+uniform half3		water_intensity;
+#endif	//	defined(USE_SOFT_WATER) && defined(NEED_SOFT_WATER)
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel
+half4   main( vf I )          : COLOR
+{
+	half4	base	= tex2D (s_base,I.tbase);
+	half3	n0	= tex2D (s_nmap,I.tnorm0);
+	half3	n1	= tex2D (s_nmap,I.tnorm1);
+	half3	Navg	= n0 + n1 - 1;
+
+	half3	Nw	= mul (half3x3(I.M1, I.M2, I.M3), Navg);
+			Nw	= normalize (Nw);
+
+	float3	N	= mul(m_V, Nw).xyz;
+	float3  P	= mul(m_V, float4(I.v2point + eye_position, 1)).xyz;
+
+	half3	v2point	= normalize (I.v2point);
+	half3	vreflect= reflect(v2point, Nw);
+			vreflect= cubify_normals(vreflect);
+
+	half3	env0	= texCUBE (s_env0, vreflect);
+	half3	env1	= texCUBE (s_env1, vreflect);
+	half3	env		= lerp (env0,env1,L_ambient.w);
+			env		= sky_adjust(env);
+			I.fog	= 1 - saturate((1 - I.fog) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x);
+
+///////////////////////////////////////////
+// SUN REFLECTION
+
+	float3	accum			=  tex2D ( s_accumulator, I.hpos.xy / pos_decompression_params2.xy ).rgb;
+			env				+= min(direct_light( 0, P, N, L_sun_dir_e.xyz).y, 32) 
+							 * L_sun_color.rgb
+							 * smoothstep(0, 1e-4, desaturate( accum, 0 ));
+
+///////////////////////////////////////////
+
+	half 	NdotV	=  dot(Nw, (-v2point));
+	half 	fresnel =  pow(1 - NdotV, 5.0);
+	half	F0 		=  lerp(dielectric, 1, fresnel);
+
+	half3	final	= base.rgb * I.c0;
+			final	= lerp(final, env, F0);
+
+	half	alpha	= saturate(lerp(base.a * 2 + 0.25, 1, F0) * 2);
+
+#ifdef	NEED_SOFT_WATER
+
+#ifdef	USE_SOFT_WATER
+	//	Igor: additional depth test
+	half4 _P = 	tex2Dproj( s_position, I.tctexgen);
+	half waterDepth = _P.z-I.tctexgen.z;
+
+	//	water fog
+	half  	fog_exp_intens = -4.0h;
+	float 	fog		= 1-exp(fog_exp_intens*waterDepth);
+	half3 	Fc		= half3( 0.1h, 0.1h, 0.1h) * water_intensity.r;
+			final 	= lerp (Fc, final, alpha);
+
+			alpha 	= min(alpha, saturate(waterDepth));
+
+			alpha 	= max (fog, alpha);
+
+	//	Leaves
+	half4	leaves	= tex2D(s_leaves, I.tbase);
+			leaves.rgb *= water_intensity.r;
+	half	calc_cos = -dot(float3(I.M1.z, I.M2.z, I.M3.z),  normalize(v2point));
+	half	calc_depth = saturate(waterDepth*calc_cos);
+	half	fLeavesFactor = smoothstep(0.025, 0.05, calc_depth );
+			fLeavesFactor *= smoothstep(0.1, 0.075, calc_depth );
+			final	= lerp(final, leaves, leaves.a*fLeavesFactor);
+			alpha	= lerp(alpha, leaves.a, leaves.a*fLeavesFactor);
+
+#endif	//	USE_SOFT_WATER
+
+#endif	//	NEED_SOFT_WATER
+			alpha	*= I.fog*I.fog;
+			final	/= (1 + final);
+	return	half4	(final, alpha);
+}

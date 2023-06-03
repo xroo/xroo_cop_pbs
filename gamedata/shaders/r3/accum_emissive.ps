@@ -1,0 +1,19 @@
+// Bright self illum shading
+#include "common.h"
+
+float4  			main  ( v2p_shadow_direct I )  : SV_Target
+// float4 main() : SV_Target
+{
+#ifdef MSAA_OPTIMIZATION
+	int				ISAMPLE	=  0;
+#endif
+	float2			tc		=  I.hpos.xy * pos_decompression_params2.zw;
+	gbuffer_data	gbd		=  gbuffer_load_data( GLD_P(tc, I.hpos.xy, ISAMPLE) );
+	float4			t_base 	= s_base.Sample( smp_base, I.tc );
+					// return	float4( gbd.C_pac, 1 ) * 16.0h;
+					return	float4( t_base ) * 16.0h;
+}
+// float4 main() : SV_Target
+// {
+// 	return   float4    (1,1,1,1)*16.0h;
+// }

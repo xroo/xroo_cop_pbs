@@ -1,0 +1,23 @@
+#include "common.h"
+#include "lmodel.h"
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Pixel
+// Note: this is a half-sphere
+uniform half3		direction;
+half4 	main		( float4 tc:TEXCOORD0 )	: COLOR
+{
+	gbuffer_data	gbd		= gbuffer_load_data	( tc.xy/tc.w, tc.xy/tc.w * pos_decompression_params2.xy );
+			float4	_P		= half4(gbd.P,		gbd.metalness	);		// pos.metalness
+			half4	_N		= half4(gbd.N,		gbd.hemi		);		// norm.hemi
+
+  half3 	L2P 	= _P.xyz - Ldynamic_pos.xyz;                         		// light2point
+  half3 	L2P_N 	= normalize	(L2P); 	                        		// light2point
+  half 		rsqr	= dot		(L2P,L2P);					// distance 2 light (squared)
+  half  	att 	= saturate	(1 - rsqr*Ldynamic_pos.w);			// q-linear attenuate
+  half  	light	= saturate	(dot(-L2P_N,_N.xyz));
+  half 		hemi 	= saturate	(dot(L2P_N, direction));
+
+  // Final color
+	return 	blendp	(half4(Ldynamic_color.xyz * att * light * hemi, 0), tc);
+}

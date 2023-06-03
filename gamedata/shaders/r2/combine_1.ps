@@ -1,0 +1,98 @@
+#include "common.h"
+
+//#define USE_SUPER_SPECULAR
+//#define USE_ORIGINAL_SSAO
+//#define HBAO_WORLD_JITTER
+
+uniform	sampler2D	s_half_depth;
+
+#include "lmodel.h"
+// #include "hmodel.h"
+#include "pbs.h"
+
+#include "ssao_blur.ps"
+#include "ssao.ps"
+#include "ssao_hbao.ps"
+
+struct         _input      {
+		float4		hpos		: TEXCOORD0;
+#ifdef        USE_VTF
+		float4		tc0			: TEXCOORD0;		// tc.xy, tc.w = tonemap scale
+#else
+		float2		tc0			: TEXCOORD0;		// tc.xy
+#endif
+	float2	tcJ	: TEXCOORD1;	// jitter coords
+};
+
+struct        _out                {
+		half4		low			: COLOR0;
+		half4		high		: COLOR1;
+};
+
+uniform sampler1D         fog_table        ;
+
+_out	main		( _input I )
+{
+
+	gbuffer_data	gbd		= gbuffer_load_data( I.tc0.xy, I.hpos * pos_decompression_params2.xy );
+
+          // Sample the buffers:
+		half4	D			= half4	(gbd.C_pac,	gbd.gloss_pac	);		// rgb.gloss
+		float4	P			= half4	(gbd.P,		gbd.metalness	);		// position.(mtl or sun)
+		half4	N			= half4	(gbd.N,		gbd.hemi		);		// normal.hemi
+		half4	L			= tex2D	(s_accumulator,		I.tc0	);		// diffuse.specular
+
+        // static sun
+	half mtl 		= P.w;
+#ifdef        USE_R2_STATIC_SUN
+	half	sun_occ        	=       P.w*2	;
+			mtl 			= 		xmaterial;
+			// L              +=       Ldynamic_color * sun_occ * plight_infinity	(mtl, P.xyz, N.xyz, Ldynamic_dir);
+#endif
+
+	//  Calculate SSAO
+//#ifdef USE_SSAO_BLUR
+//		half occ = ssao_blur_ps(I.tc0);
+#ifdef USE_HBAO
+		float		occ = calc_hbao(P.z, N, I.tc0);
+#else
+		half		occ = calc_ssao(P, N, I.tc0, I.tcJ);
+#endif
+
+		half4			light			= half4	(L.rgb, L.w)        ;
+		half3			color			= combine_image(D, P, N, L, occ.x, I.tc0);
+
+        // here should be distance fog
+        float3        	pos        		= P.xyz;
+        float         	distance		= length		(pos);
+        // float         	fog				= saturate		(distance*fog_params.w + fog_params.x / (1 + sun_shafts_intensity.x)); //
+        float         	fog				= saturate		((distance*fog_params.w + fog_params.x) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x); //
+                      	color			= lerp     		(color,fog_color,fog);        			//
+        half        	skyblend		= saturate		(fog*fog);
+
+#ifdef         DBG_TMAPPING
+        color                        	= D.xyz;
+#endif
+
+        // final tone-mapping
+#ifdef        USE_VTF
+        half          	tm_scale        = I.tc0.w;                // interpolated from VS
+#else
+        half         	tm_scale        = tex2D        (s_tonemap,I.tc0).x;
+#endif
+
+//	color 		= N * 0.5 + 0.5;	//show normals
+//	color 		= N.w;				//show hemi
+//	color 		= occ;				//show occlusion
+
+        _out        	o;
+
+						color			*= tm_scale;
+        				// o.low			= color.rgbb;
+						o.low 			= color.rgbb / ( 1 + color.rgbb ) ;
+        				o.high			= color.rgbb / def_hdr;
+                        o.low.a         = skyblend	;
+						o.high.a		= skyblend	;
+
+		return        	o;
+}

@@ -1,0 +1,93 @@
+uniform	float4		screen_res;
+#ifdef USE_MSAA
+#ifndef USE_HBAO
+Texture2DMS<float4, MSAA_SAMPLES>	s_occ;
+#else
+uniform	Texture2D					s_occ;
+#endif
+#else
+uniform	Texture2D					s_occ;
+#endif
+
+// #ifndef USE_MSAA
+   static float2 arrOffsets1[4] =
+   {
+     float2( 1,-1),
+     float2(-1,-1),
+     float2( 1, 1),
+     float2(-1, 1)
+   };
+   static float2 arrOffsets2[4] =
+   {
+     float2( 0, 1),
+     float2( 1, 0),
+     float2( 0,-1),
+     float2(-1, 0)
+   };
+// #else
+//    static int2 arrOffsets1[4] =
+//    {
+//      int2( 1, -1),
+//      int2(-1, -1),
+//      int2( 1, 1),
+//      int2(-1, 1)
+//    };
+// #endif
+
+float blur_sample ( float fOcclusion, float centerDepth, float2 arr[4], float offset, float2 tc, int iSample )
+{
+	// float  lSumWeight = 0.025f;
+	float  lSumWeight = 0.1f;
+	[unroll]
+	for(int i=0; i<4; i++)
+	{
+		#ifndef USE_MSAA
+			float2	sampleTC	= tc * 0.5 + pos_decompression_params2.zw * arr[i] * offset;
+			float2	sampleData	= s_occ.Sample(smp_linear, sampleTC);
+			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
+		#else
+			int2	sampleTC	= tc * 0.5 + int2(arr[i]) * offset;
+			float2	sampleData	= s_occ.Load(int3(sampleTC, 0), iSample);
+			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
+		#endif
+		 	
+		float	fDepth		= max(sampleData.g, 0.0);
+		float	fDiff		= 8*abs(fDepth-centerDepth)/min(fDepth,centerDepth);
+		float	fWeight		= saturate(1-fDiff);
+
+				fOcclusion += sampleData.r * fWeight;
+
+				lSumWeight += fWeight;
+	}
+	return fOcclusion /= lSumWeight;   
+}
+
+#ifndef USE_MSAA
+float ssao_blur_ps(float2 centerTC)
+{
+	int iSample = 0;
+#else
+float ssao_blur_ps(int2 centerTC, int iSample)
+{
+#endif
+	// low weight center sample - will be used on edges
+	// float  fSumWeight = 0.025f;
+	float  fSumWeight = 0.1f;
+#ifndef USE_MSAA
+	float2 centerData = s_occ.Sample( smp_linear, (centerTC) * 0.5);
+	float2 centerPosZ = s_position.Sample( smp_linear, (centerTC)).z;
+#else
+	float2 centerData = s_occ.Load( int3(centerTC * 0.5, 0), iSample);
+#endif
+	if (saturate(centerData.r) <= 0) centerData.r = 1;
+
+	float  fOcclusion  = centerData.r * 1 / 8;
+	float  centerDepth = centerData.g;
+	fOcclusion	+= blur_sample(centerData.r * fSumWeight, centerDepth, arrOffsets1, 1.0, centerTC, iSample) * 4 / 8;
+	fOcclusion	+= blur_sample(centerData.r * fSumWeight, centerDepth, arrOffsets2, 2.0, centerTC, iSample) * 2 / 8;
+	fOcclusion	+= blur_sample(centerData.r * fSumWeight, centerDepth, arrOffsets1, 2.0, centerTC, iSample) * 1 / 8;
+
+  // return centerData.r;
+  return fOcclusion;
+  return (centerTC.x < 0.5 ? centerData.x : fOcclusion * 8 / 8);
+}

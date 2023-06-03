@@ -1,0 +1,58 @@
+#include "common.h"
+#include "lmodel.h"
+#include "shadow.h"
+//////////////////////////////////////////////////////////////////////////////////////////
+// This is the basic primitive used by convex, volumetric lights
+// for example spot-lights, one face of the omni lights, etc.
+//////////////////////////////////////////////////////////////////////////////////////////
+// following options are available to configure compilation:
+// USE_LMAP
+// USE_LMAPXFORM
+// USE_SHADOW
+//////////////////////////////////////////////////////////////////////////////////////////
+uniform float4              m_lmap        [2]        ;
+float4         main         ( float4 tc : TEXCOORD0, float4 tcJ : TEXCOORD1 ) : COLOR
+{
+	gbuffer_data	gbd		= gbuffer_load_data	( tc.xy/tc.w, tc.xy/tc.w * pos_decompression_params2.xy );
+
+	//	Emulate virtual offset
+	gbd.P += gbd.N*0.015f;
+
+			half4	_D		= half4(gbd.C_pac,	gbd.gloss_pac	);		// rgb.gloss
+			float4	_P		= half4(gbd.P,		gbd.metalness	);		// pos.metalness
+			half4	_N		= half4(gbd.N,		gbd.hemi		);		// norm.hemi
+
+	half 	m	= xmaterial	;
+# ifndef USE_R2_STATIC_SUN
+			m 	= _P.w		;
+# endif
+        // ----- light-model
+      	half		rsqr;
+        half4		light   = plight_local(_D, _P, _N, Ldynamic_pos, Ldynamic_pos.w, rsqr);
+
+        // ----- shadow
+		half4          		P4      = half4                	(_P.x,_P.y,_P.z,1);
+        float4         		PS      = mul                	(m_shadow,         P4);
+        half         		s		= 1.h;
+        #ifdef  USE_SHADOW
+                #ifdef         USE_SJITTER
+                  s         = shadowtest        (PS,tcJ);
+                #else
+                  s         = shadow        	(PS);
+                #endif
+        #endif
+
+        // ----- lightmap
+        half4         lightmap= 1.h;
+        #ifdef        USE_LMAP
+                #ifdef         USE_LMAPXFORM
+              			PS.x         		= dot         	(P4, m_lmap[0]);
+                        PS.y                = dot           (P4, m_lmap[1]);
+                #endif
+                lightmap= tex2Dproj         (s_lmap,        PS);        //
+        #endif
+
+        // return			float4(_P.xy, 0, 0);
+        // return			float4(light);
+        return         blendp        (Ldynamic_color * Ldynamic_color * light * s * lightmap * lightmap * llocal_intensity, tc);
+}
