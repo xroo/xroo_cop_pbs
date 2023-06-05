@@ -8,6 +8,6 @@ float4  			main  ( v2p_shadow_direct I )  : SV_Target
 	int				ISAMPLE	=  0;
 #endif
 	float2			tc		=  I.hpos.xy * pos_decompression_params2.zw;
-	float4			t_base 	= s_base.Sample( smp_base, I.tc );
-					return	pow(float4( t_base ), 2) * 16.0h;
+	float3			col		=  s_diffuse.Sample( smp_base, tc).xyz;
+					return	pow(float4(col, 0), 2) * 16.0h;
 }

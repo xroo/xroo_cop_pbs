@@ -1,0 +1,13 @@
+#include "common.h"
+
+struct _input
+{
+	float2		hpos		:	VPOS;
+};
+
+half4  main  ( _input I )  : COLOR
+{
+	float2			tc		=  I.hpos.xy * pos_decompression_params2.zw;
+	float3			col		=  tex2D (s_diffuse, tc).xyz;
+					return	pow(float4(col, 0), 2) * 16.0h;
+}
