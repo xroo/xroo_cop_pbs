@@ -60,23 +60,27 @@ float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, fl
 	half noiseOffset = GTAO_Offsets(cTexCoord);
 	half noiseDirection = GTAO_Noise(cTexCoord * pos_decompression_params2.xy);
 
-	float3 varProbe = 0.0;
+    float falloff_mul = 2 / pow(GTAO_RADIUS, 2);
+    float screen_res_mul = 1.0h / GTAO_SAMPLE * pos_decompression_params2.zw;
+    float pi_by_slices = 3.14 / GTAO_SLICES;
 
 	float visibility = 0.0;
 
     for(int slice = 0; slice < GTAO_SLICES; slice++)
     {
-        float phi = (slice + noiseDirection) * (3.14 / GTAO_SLICES);
+        float phi = (slice + noiseDirection) * pi_by_slices;
         float2 omega = float2(cos(phi), sin(phi));
         float3 directionV = float3(omega.x, omega.y, 0.0);
 
         float3 orthoDirectionV = directionV - (dot(directionV, viewV) * viewV);
         float3 axisV = cross(directionV, viewV);
         float3 projNormalV = normalV - axisV * dot(normalV, axisV);
+        float projNormalLenght = length(projNormalV);
 
         float sgnN = sign(dot(orthoDirectionV, projNormalV));
-        float cosN = saturate(dot(projNormalV, viewV) / length(projNormalV));
+        float cosN = saturate(dot(projNormalV, viewV) / projNormalLenght);
         float n = sgnN * acos(cosN);
+        float sinN2 = 2.0 * sin(n);
 
         for(int side = 0; side < 2; side ++)
         {
@@ -85,21 +89,18 @@ float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, fl
             for(int sample = 0; sample < GTAO_SAMPLE; sample++)
             {
 
-                float2 s = max( screen_radius * (half(sample) + noiseOffset), 4 + half(sample)) / GTAO_SAMPLE * pos_decompression_params2.zw; // fix for multiplying s by sample=0 from Unity code
+                float2 s = max( screen_radius * (half(sample) + noiseOffset), 4 + half(sample)) * screen_res_mul; // fix for multiplying s by sample=0 from Unity code
                 float2 sTexCoord = cTexCoord + (-1.0 + 2.0 * side) * s * float2(omega.x, -omega.y);
                 float3 sPosV = unpack_position(sTexCoord);
                 float3 sHorizonV = sPosV - cPosV;
-                float falloff = saturate(dot(sHorizonV, sHorizonV) * (2 / pow(GTAO_RADIUS, 2)));
+                float falloff = saturate(dot(sHorizonV, sHorizonV) * falloff_mul);
                 float H = dot(normalize(sHorizonV), viewV);
                 cHorizonCos = (H > cHorizonCos) ? lerp(H, cHorizonCos, falloff) : cHorizonCos;
-
-                // varProbe += sPosV / GTAO_SLICES / GTAO_SAMPLE / 2;
-                varProbe = s.yyy;
 
             }
 
             half h = n + clamp((-1.0 + 2.0 * side) * acos(cHorizonCos) - n, -3.14/2.0, 3.14/2.0);
-            visibility += length(projNormalV) * (cosN + 2.0 * h * sin(n) - cos(2.0 * h - n)) / 4.0;
+            visibility += projNormalLenght * (cosN + h * sinN2 - cos(2.0 * h - n)) / 4.0;
         }
     }
 
