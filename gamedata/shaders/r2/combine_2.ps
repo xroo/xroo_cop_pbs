@@ -70,7 +70,10 @@ half4 	main		( v2p I )	: COLOR
   half4 	s3 	=  tex2D	(s_image, offset + I.tc4*w);
 
 	half3 	final	=  mblur	(center, dc, (s0+s1+s2+s3)/4.h);
-	half3	bloom	=  tex2D	(s_bloom, I.tc0);
+		 	final	=  min		(final / ( 1 - final ), 10.0h);
+	half4	bloom	=  tex2D	(s_bloom, I.tc0);
+			final	=  combine_bloom(final, bloom);
+			final	=  pow(NeutralTonemap(pow(final, 2)), 0.5);
 
-  return combine_bloom	(final,bloom);
+  return half4(final, 1.0h);
 }
