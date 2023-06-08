@@ -19,26 +19,17 @@ float3 sky_adjust(float3 x)
 	return x * (1.0 + x * 0.25);
 }
 
-void tonemap( out float4 low, out float4 high, float3 rgb, float scale)
+float4 tonemap( float3 rgb, float scale )
 {
-	rgb		=	rgb*scale;
-
-	const float fWhiteIntensity = 1.7;
-
-	const float fWhiteIntensitySQR = fWhiteIntensity*fWhiteIntensity;
-
-//	low		=	(rgb/(rgb + 1)).xyzz;
-	low		=	( (rgb*(1+rgb/fWhiteIntensitySQR)) / (rgb+1) ).xyzz;
-
-	high	=	rgb.xyzz/def_hdr;	// 8x dynamic range
-
-/*
-	rgb		=	rgb*scale;
-
-	low		=	rgb.xyzz;
-	high	=	low/def_hdr;	// 8x dynamic range
-*/
+	rgb		*=  scale;
+	return	rgb.rgbb / ( 1 + rgb.rgbb );
 }
+void tonemap( out float4 low, out float4 high, float3 rgb, float scale )
+{
+	low		=	tonemap(rgb, scale).rgbb;
+	high	=	rgb.xyzz/def_hdr;	// 8x dynamic range
+}
+
 
 //////////////////////////
 //// ACES TONEMAPPING ////
@@ -79,39 +70,6 @@ half3 aces_fitted(half3 v)
     v = mul(aces_input_matrix, v);
     v = rtt_and_odt_fit(v);
     return mul(aces_output_matrix, v);
-}
-
-///////////////////////////
-
-///////////////////////////////
-//// Uncharted Tonemapping ////
-///////////////////////////////
-
-half3 uncharted2_tonemap_partial(half3 x)
-{
-    // float A = 0.15f;
-    // float B = 0.50f;
-    // float C = 0.10f;
-    // float D = 0.20f;
-    // float E = 0.02f;
-    // float F = 0.30f;
-    float A = 0.15f;
-    float B = 0.10f;
-    float C = 0.50f;
-    float D = 0.20f;
-    float E = 0.02f;
-    float F = 0.80f;
-    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-}
-
-half3 uncharted2_filmic(half3 v)
-{
-    half exposure_bias = 2.0f;
-    half3 curr = uncharted2_tonemap_partial(v * exposure_bias);
-
-    half3 W = 11.2f;
-    half3 white_scale = 1.0f / uncharted2_tonemap_partial(W);
-    return curr * white_scale;
 }
 
 ///////////////////////////////

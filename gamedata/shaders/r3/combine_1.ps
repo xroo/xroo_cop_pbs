@@ -129,10 +129,8 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 //	color 		= occ;				//show occlusion
 
         _out        	o;
-						color			*= tm_scale;
-						// o.low 			= color.rgbb ;
-						o.low 			= color.rgbb / ( 1 + color.rgbb ) ;
-						o.high 			= color.rgbb / def_hdr ;
+
+		tonemap			(o.low, o.high, color, tm_scale );
 						o.low.a			= skyblend	;
 						o.high.a		= skyblend	;
 

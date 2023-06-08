@@ -30,10 +30,7 @@ _out main( v2p I )
 
 	// final tone-mapping
 	_out			o;
-    // tonemap        	(o.low, o.high, sky.xyzz, 1 )	;
-
-			o.low	= sky.xyzz / ( 1 + sky.xyzz);
-			o.high	= o.low/def_hdr;
+    tonemap        	(o.low, o.high, sky, 1 )	;
 
 	// return        	0.0;
 	return        	o;

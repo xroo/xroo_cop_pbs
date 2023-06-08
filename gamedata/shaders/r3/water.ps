@@ -63,6 +63,8 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 // SSLR
 
 	float4	sslr 			=  ScreenSpaceLocalReflections( P, normalize( reflect( normalize(P), normalize(N) ) ) );
+	float3	sslrRes			=  0;
+	float	sslrFog			=  0;
 
 #ifndef USE_MSAA
 	float3	sslrLight		=  s_accumulator.SampleLevel( smp_rtlinear, sslr.xy, 0).xyz;
@@ -76,11 +78,13 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	float3	sslrEnv0		=  s_env0.Sample( smp_rtlinear, cubify_normals(sslrGBD.N));
 	float3	sslrEnv1		=  s_env1.Sample( smp_rtlinear, cubify_normals(sslrGBD.N));
 	float3  sslrEnv			=  sky_adjust(lerp (sslrEnv0, sslrEnv1, L_ambient.w));
-			sslr.rgb		=  lerp (env, sslrEnv * sslrGBD.C_pac * L_hemi_color * 2 + sqrt(sslrLight), sslr.z);
-#else
-			sslr.rgb		=  lerp (env, sqrt(sslrLight), sslr.z);
+			sslrFog			=  saturate((length(sslrGBD.P)*fog_params.w + fog_params.x) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x);
+			sslrRes			+= sslrEnv * sslrGBD.C_pac * L_hemi_color * 2;
 #endif
-			env				=  lerp (env, sslr.rgb, sslr.w);
+			sslrRes			+= sqrt(sslrLight);
+			sslrRes			=  lerp	(sslrRes, fog_color.rgb, sslrFog);
+			sslrRes			=  lerp (env, sslrRes, sslr.z);
+			env				=  lerp (env, sslrRes, sslr.w);
 
 ///////////////////////////////////////////
 // SUN REFLECTION
@@ -133,9 +137,11 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 #endif	//	USE_SOFT_WATER
 
 #endif	//	NEED_SOFT_WATER
+	half	tm_scale	= s_tonemap.Sample( smp_nofilter, half2(0.5, 0.5)).r;
 
 			alpha		*= I.fog*I.fog;
-			final		/= (1 + final);
+			final		= tonemap(final, tm_scale);
+
 	return	float4  	(final, alpha );
 
 }

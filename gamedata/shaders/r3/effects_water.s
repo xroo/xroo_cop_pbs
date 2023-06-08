@@ -31,6 +31,7 @@ function normal                (shader, t_base, t_second, t_detail)
 	shader:dx10texture	("s_sky0",			tex_sky0)
 	shader:dx10texture	("s_sky1",			tex_sky1)
 	shader:dx10texture	("s_position",		"$user$position")
+	shader:dx10texture	("s_tonemap",		"$user$tonemap")
 	shader:dx10texture	("s_accumulator",	tex_accum)
 
 	shader:dx10texture	("s_leaves",	tex_leaves)

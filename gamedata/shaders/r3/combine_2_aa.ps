@@ -116,13 +116,11 @@ float4 main ( v_aa_AA I, float4 pos2d : SV_POSITION ) : SV_Target
 
 	float3 	final	=  mblur( center, dc, (s0+s1+s2+s3)/4.h );
 
-//	return combine_bloom(final,tex2D	(s_bloom, I.tc0));
-	// return combine_bloom( final, s_bloom.Sample( smp_rtlinear, I.Tex0));
  	final = min(final / ( 1 - final ), 10.0h);
  	final = combine_bloom( final, s_bloom.Sample( smp_rtlinear, I.Tex0 ) );
  	final = pow(NeutralTonemap(pow(final, 2)), 0.5);
+
  	// res.Color.rgb = pow(aces_fitted(pow(final, 2)), 0.5);
- 	// res.Color.rgb = pow(uncharted2_filmic(pow(final, 2)), 0.5);
  	return float4(final, 1.0h);
 
 }

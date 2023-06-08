@@ -104,9 +104,8 @@ c2_out main( v2p_aa_AA I )
  	res.Color = img.rgbb;
  	res.Color = combine_bloom( res.Color, bloom );
  	res.Color.rgb = pow(NeutralTonemap(pow(res.Color.rgb, 2)), 0.5);
+
  	// res.Color.rgb = pow(aces_fitted(pow(res.Color.rgb, 2)), 0.5);
- 	// res.Color.rgb = pow(uncharted2_filmic(pow(res.Color.rgb, 2)), 0.5);
-    // tonemap        	(res.Color, unused_variable, res.Color * 1, 1 )	;
 
 #ifdef USE_MSAA
 	float4 ptp = mul(m_P, float4(gbd.P, 1));
