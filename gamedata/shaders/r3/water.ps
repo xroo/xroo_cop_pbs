@@ -89,7 +89,11 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 ///////////////////////////////////////////
 // SUN REFLECTION
 
-	float3	accum			=  s_accumulator.Sample( smp_rtlinear, I.hpos.xy / pos_decompression_params2.xy ).rgb;
+#ifndef USE_MSAA
+	float3	accum			=  s_accumulator.Sample( smp_rtlinear, I.hpos.xy * pos_decompression_params2.zw ).rgb;
+#else
+	float3	accum			=  s_accumulator.Load( int3(I.hpos.xy, 0), 0).rgb;
+#endif
 			env				+= min(direct_light( 0, P, N, L_sun_dir_e.xyz).y, 32) 
 							 * L_sun_color.rgb
 							 * smoothstep(0, 1e-4, desaturate( accum, 0 ));
@@ -100,7 +104,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	half 	fresnel 		=  pow(1 - NdotV, 5.0);
 	half	F0 				=  lerp(dielectric, 1, fresnel);
 
-	half3	final			= base.rgb * I.c0;
+	half3	final			= base.rgb * I.c0.rgb;
 			final			= lerp(final, env, F0);
 
 	half	alpha			= saturate(lerp(base.a * 2 + 0.25, 1, F0) * 2);
@@ -137,7 +141,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 #endif	//	USE_SOFT_WATER
 
 #endif	//	NEED_SOFT_WATER
-	half	tm_scale	= s_tonemap.Sample( smp_nofilter, half2(0.5, 0.5)).r;
+	half	tm_scale	= I.c0.w;
 
 			alpha		*= I.fog*I.fog;
 			final		= tonemap(final, tm_scale);
