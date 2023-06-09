@@ -47,7 +47,7 @@ float blur_sample ( float fOcclusion, float centerDepth, float2 arr[4], float of
 			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
 		#else
 			int2	sampleTC	= tc * 0.5 + int2(arr[i]) * offset;
-			float2	sampleData	= s_occ.Load(int3(sampleTC, 0), iSample);
+			float2	sampleData	= s_occ.Load(int2(sampleTC), iSample).xx;
 			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
 		#endif
 		 	
@@ -77,7 +77,7 @@ float ssao_blur_ps(int2 centerTC, int iSample)
 	float2 centerData = s_occ.Sample( smp_linear, (centerTC) * 0.5);
 	float2 centerPosZ = s_position.Sample( smp_linear, (centerTC)).z;
 #else
-	float2 centerData = s_occ.Load( int3(centerTC * 0.5, 0), iSample);
+	float2 centerData = s_occ.Load( int2(centerTC * 0.5), iSample).xx;
 #endif
 	if (saturate(centerData.r) <= 0) centerData.r = 1;
 

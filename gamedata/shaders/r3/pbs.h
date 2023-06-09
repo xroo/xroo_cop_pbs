@@ -225,7 +225,7 @@ float4 calc_sslr ( float3 position, float3 normal, float3 hspecular, float4 pos2
 #ifndef USE_MSAA
 	float3	sslrLight		=  s_accumulator.SampleLevel( smp_rtlinear, sslr.xy, 0).xyz;
 #else
-	float3	sslrLight		=  s_accumulator.Load( int3(sslr.xy * pos_decompression_params2.xy, 0), 0).xyz; //tex2Dlod(s_image, ReflUV.xyyy);
+	float3	sslrLight		=  s_accumulator.Load( int2( sslr.xy * pos_decompression_params2.xy ), 0).xyz; //tex2Dlod(s_image, ReflUV.xyyy);
 #endif
 			sslrLight		=  sqrt(sslrLight);
 #ifdef PBR_IRRADIENCE_IN_SSLR
@@ -292,7 +292,7 @@ float3 combine_image
 	float3	dspecuilar		=  hspecular * (fresnelSchlickRoughness(NdotV, dielectric, roughness2) * brdf.x + brdf.y);
 			dresult			=  dresult*dresult + dspecuilar*dspecuilar + light.rgb; // All the results have to be added squared
 	// compute all image like metalic materials
-	float3	mresult 		=  hspecular * (fresnelSchlickRoughness(NdotV, diffuse, roughness2) * brdf.x + brdf.y);
+	float3	mresult 		=  hspecular * (fresnelSchlickRoughness(NdotV, diffuse.rgb, roughness2) * brdf.x + brdf.y);
 			mresult			=  mresult * mresult + light.rgb;
 	// Multiple scattering emulation. Referenced from Unity image results
 			mresult			=  lerp(mresult, mresult * 2.6, roughness2);

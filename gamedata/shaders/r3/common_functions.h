@@ -109,7 +109,7 @@ float3 NeutralTonemap(float3 x)
 
 float4 combine_bloom( float3  low, float4 high)	
 {
-        return float4( low + high * high.a, 1.h );
+        return float4( low + high.rgb * high.a, 1.h );
 }
 
 float calc_fogging( float4 w_pos )      
@@ -129,12 +129,12 @@ float3 calc_sun_r1( float3 norm_w )
 
 float3 calc_model_hemi_r1( float3 norm_w )    
 {
- return max(0,norm_w.y)*L_hemi_color;
+	return max(0,norm_w.y)*L_hemi_color.rgb;
 }
 
 float3 calc_model_lq_lighting( float3 norm_w )    
 {
-	return L_material.x*calc_model_hemi_r1(norm_w) + L_ambient + L_material.y*calc_sun_r1(norm_w);
+	return L_material.x*calc_model_hemi_r1(norm_w) + L_ambient.rgb + L_material.y*calc_sun_r1(norm_w);
 }
 
 float3 	unpack_normal( float3 v )	{ return 2*v-1; }
@@ -166,7 +166,7 @@ float   get_sun( float4 lmh)
 
 float3	v_hemi(float3 n)
 {
-	return L_hemi_color*(.5f + .5f*n.y);                   
+	return L_hemi_color.rgb*(.5f + .5f*n.y);                   
 }
 
 float3	v_sun(float3 n)                        	
@@ -426,7 +426,7 @@ gbuffer_data gbuffer_load_data( float2 tc : TEXCOORD, float2 pos2d, uint iSample
 #ifndef USE_MSAA
 	float4 P	= s_position.Sample( smp_nofilter, tc );
 #else
-   float4 P	= s_position.Load( int3( tc * pos_decompression_params2.xy, 0 ), iSample );
+	float4 P	= s_position.Load( int2( tc * pos_decompression_params2.xy ), iSample );
 #endif
 
 // ORIGILAN
@@ -448,8 +448,8 @@ gbuffer_data gbuffer_load_data( float2 tc : TEXCOORD, float2 pos2d, uint iSample
 	float4	N	= s_normal.Sample( smp_nofilter, tc );
 	float4	C	= s_diffuse.Sample(  smp_nofilter, tc );
 #else
-	float4	N	= s_normal.Load( int3( tc * pos_decompression_params2.xy, 0 ), iSample );
-	float4	C	= s_diffuse.Load( int3( tc * pos_decompression_params2.xy, 0 ), iSample );
+	float4	N	= s_normal.Load( int2( tc * pos_decompression_params2.xy ), iSample );
+	float4	C	= s_diffuse.Load( int2( tc * pos_decompression_params2.xy ), iSample );
 #endif
 
 			gbd.N			= N.xyz;

@@ -30,7 +30,7 @@ half3 unpack_position(half2 tc)
 #ifndef USE_MSAA
 	half depth = s_position.Sample( smp_nofilter, tc ).z;
 #else
-	half depth = s_position.Load( int3( tc * pos_decompression_params2.xy ,0),0 ).z;
+	half depth = s_position.Load( int2( tc * pos_decompression_params2.xy ),0 ).z;
 #endif
 	return gbuf_unpack_position((depth > 0.01 ? depth : 1000.0), tc * pos_decompression_params2.xy );
 }
@@ -61,7 +61,7 @@ float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, fl
 	half noiseDirection = GTAO_Noise(cTexCoord * pos_decompression_params2.xy);
 
     float falloff_mul = 2 / pow(GTAO_RADIUS, 2);
-    float screen_res_mul = 1.0h / GTAO_SAMPLE * pos_decompression_params2.zw;
+    float2 screen_res_mul = 1.0h / GTAO_SAMPLE * pos_decompression_params2.zw;
     float pi_by_slices = 3.14 / GTAO_SLICES;
 
 	float visibility = 0.0;

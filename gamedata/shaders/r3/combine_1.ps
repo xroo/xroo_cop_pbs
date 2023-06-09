@@ -61,7 +61,7 @@ _out main ( _input I )
 _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 #endif
 {
-	gbuffer_data	gbd = gbuffer_load_data( GLD_P(I.tc0, I.pos2d, ISAMPLE) );
+	gbuffer_data	gbd = gbuffer_load_data( GLD_P(I.tc0.xy, I.pos2d.xy, ISAMPLE) );
 	
 	// Sample the buffers:
 	float4	P = float4( gbd.P, gbd.mtl );	// position.metalness
@@ -70,13 +70,13 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 #ifndef USE_MSAA
 	float4	L = s_accumulator.Sample( smp_nofilter, I.tc0);	// diffuse.specular
 #else
-	float4	L = s_accumulator.Load( int3( I.pos2d.xy, 0 ), ISAMPLE);	// diffuse.specular
+	float4	L = s_accumulator.Load( int2( I.pos2d.xy ), ISAMPLE);	// diffuse.specular
 #endif
 
 	//  Calculate SSAO
 
 #ifdef USE_MSAA
-	int2	texCoord = I.pos2d;
+	int2	texCoord = I.pos2d.xy;
 #endif
 	
 
@@ -119,7 +119,7 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
         float3        	pos        		= P.xyz;
         float         	distance		= length		(pos);
         float         	fog				= saturate		((distance*fog_params.w + fog_params.x) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x); //
-                      	color			= lerp     		(color,fog_color,fog);        			//
+                      	color			= lerp     		(color, fog_color.rgb, fog);        			//
         float        	skyblend		= saturate		(fog*fog);
 
         float          	tm_scale        = I.tc0.w;                // interpolated from VS

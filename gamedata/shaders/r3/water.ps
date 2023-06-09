@@ -40,21 +40,21 @@ float3	water_intensity;
 float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 {
 	float4	base= s_base.Sample( smp_base, I.tbase);
-	float3	n0	= s_nmap.Sample( smp_base, I.tnorm0);
-	float3	n1	= s_nmap.Sample( smp_base, I.tnorm1);
+	float3	n0	= s_nmap.Sample( smp_base, I.tnorm0).xyz;
+	float3	n1	= s_nmap.Sample( smp_base, I.tnorm1).xyz;
 	float3	Navg	= n0 + n1 - 1;
 
 	float3	Nw	= mul (float3x3(I.M1, I.M2, I.M3), Navg);
 			Nw	= normalize (Nw);
-	float3	N	= mul(m_V, Nw).xyz;
+	float3	N	= mul(m_V, float4(Nw, 1)).xyz;
 	float3  P	= mul(m_V, float4(I.v2point + eye_position, 1)).xyz;
 
 	float3	v2point		= normalize (I.v2point);
 	float3	vreflect	= reflect ( normalize(v2point), normalize(Nw) );
 	float3	vcube		= cubify_normals( vreflect );     // fake remapping
 
-	float3	env0	= s_sky0.Sample( smp_rtlinear, vcube );
-	float3	env1	= s_sky1.Sample( smp_rtlinear, vcube );
+	float3	env0	= s_sky0.Sample( smp_rtlinear, vcube ).rgb;
+	float3	env1	= s_sky1.Sample( smp_rtlinear, vcube ).rgb;
 	float3	env		= lerp (env0,env1,L_ambient.w);
 			env		= sky_adjust(env);
 			I.fog	= 1 - saturate((1 - I.fog) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x);
@@ -67,19 +67,19 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	float	sslrFog			=  0;
 
 #ifndef USE_MSAA
-	float3	sslrLight		=  s_accumulator.SampleLevel( smp_rtlinear, sslr.xy, 0).xyz;
+	float3	sslrLight		=  s_accumulator.SampleLevel( smp_rtlinear, sslr.xy, 0).rgb;
 #else
-	float3	sslrLight		=  s_accumulator.Load( int3(sslr.xy * pos_decompression_params2.xy, 0), 0).xyz; //tex2Dlod(s_image, ReflUV.xyyy);
+	float3	sslrLight		=  s_accumulator.Load( int2(sslr.xy * pos_decompression_params2.xy), 0).rgb; //tex2Dlod(s_image, ReflUV.xyyy);
 #endif
 
 #ifdef PBR_IRRADIENCE_IN_SSLR
 	gbuffer_data	sslrGBD	=  gbuffer_load_data( GLD_P(sslr.xy, pos2d.xy, 0) );
 	float3	sslrNW			=  mul( (float3x3)m_v2w, sslrGBD.N );
-	float3	sslrEnv0		=  s_env0.Sample( smp_rtlinear, cubify_normals(sslrGBD.N));
-	float3	sslrEnv1		=  s_env1.Sample( smp_rtlinear, cubify_normals(sslrGBD.N));
+	float3	sslrEnv0		=  s_env0.Sample( smp_rtlinear, cubify_normals(sslrGBD.N)).rgb;
+	float3	sslrEnv1		=  s_env1.Sample( smp_rtlinear, cubify_normals(sslrGBD.N)).rgb;
 	float3  sslrEnv			=  sky_adjust(lerp (sslrEnv0, sslrEnv1, L_ambient.w));
 			sslrFog			=  saturate((length(sslrGBD.P)*fog_params.w + fog_params.x) * (1 - sun_shafts_intensity.x) + sun_shafts_intensity.x);
-			sslrRes			+= sslrEnv * sslrGBD.C_pac * L_hemi_color * 2;
+			sslrRes			+= sslrEnv * sslrGBD.C_pac * L_hemi_color.rgb * 2;
 #endif
 			sslrRes			+= sqrt(sslrLight);
 			sslrRes			=  lerp	(sslrRes, fog_color.rgb, sslrFog);
@@ -114,7 +114,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 #ifdef	USE_SOFT_WATER
 	//	Igor: additional depth test
 	float2 PosTc = I.tctexgen.xy/I.tctexgen.z;
-	gbuffer_data gbd = gbuffer_load_data( PosTc, pos2d );
+	gbuffer_data gbd = gbuffer_load_data( PosTc, pos2d.xy );
 	float4 _P = 	float4( gbd.P, gbd.gloss );
 	float waterDepth = _P.z-I.tctexgen.z;
 
@@ -135,7 +135,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	half	calc_depth = saturate(waterDepth*calc_cos);
 	half	fLeavesFactor = smoothstep(0.025, 0.05, calc_depth );
 			fLeavesFactor *= smoothstep(0.1, 0.075, calc_depth );
-	final		= lerp(final, leaves, leaves.a*fLeavesFactor);
+	final		= lerp(final, leaves.rgb, leaves.a*fLeavesFactor);
 	alpha		= lerp(alpha, leaves.a, leaves.a*fLeavesFactor);
 
 #endif	//	USE_SOFT_WATER
@@ -144,7 +144,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	half	tm_scale	= I.c0.w;
 
 			alpha		*= I.fog*I.fog;
-			final		= tonemap(final, tm_scale);
+			final		= tonemap(final, tm_scale).xyz;
 
 	return	float4  	(final, alpha );
 

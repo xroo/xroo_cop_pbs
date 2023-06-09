@@ -26,7 +26,7 @@ float	get_depth_fast			(float2 tc)
 #ifndef USE_MSAA
 	return s_position.SampleLevel( smp_nofilter, tc, 0).z;
 #else
-	return s_position.Load( int3( tc * pos_decompression_params2.xy ,0), 0 ).z;
+	return s_position.Load( int2( tc * pos_decompression_params2.xy ), 0 ).z;
 #endif
 }
 
