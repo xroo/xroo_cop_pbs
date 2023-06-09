@@ -7,7 +7,10 @@ float4  			main  ( v2p_shadow_direct I )  : SV_Target
 #ifdef MSAA_OPTIMIZATION
 	int				ISAMPLE	=  0;
 #endif
-	float2			tc		=  I.hpos.xy * pos_decompression_params2.zw;
-	float3			col		=  s_diffuse.Sample( smp_base, tc).xyz;
+#ifndef USE_MSAA
+	float3			col		=  s_diffuse.Sample( smp_base, I.hpos.xy * pos_decompression_params2.zw).xyz;
+#else
+	float3			col		=  s_diffuse.Load( int3(I.hpos.xy, 0), ISAMPLE).xyz;
+#endif
 					return	pow(float4(col, 0), 2) * 16.0h;
 }
