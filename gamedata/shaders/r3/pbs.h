@@ -210,11 +210,12 @@ half3 ambient_skybox
 			env_s 		=  env_ground( env_s, vreflect, roughness );
 #endif
 			env_s		=  sky_adjust(env_s);
-	float	F 			=  fresnelSchlickRoughness(NdotV, 1, roughness);
 
 	half3	hspecular 	=  env_s;
-	half3	tonemapped	=  ((hspecular * half3(113, 104, 92) + half3(132, 133, 140)) / 255 - 0.5 ) * 2;
-			return 		lerp(hspecular, tonemapped, roughness);
+//	Tryings to compensate mip color distortions
+//	half3	tonemapped	=  ((hspecular * half3(113, 104, 92) + half3(132, 133, 140)) / 255 - 0.5 ) * 2;
+		//	return 		lerp(hspecular, tonemapped, roughness);
+			return		hspecular;
 }
 
 float4 calc_sslr ( float3 position, float3 normal, float3 hspecular, float4 pos2d )
