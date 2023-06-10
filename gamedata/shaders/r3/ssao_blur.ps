@@ -43,11 +43,11 @@ float blur_sample ( float fOcclusion, float centerDepth, float2 arr[4], float of
 	{
 		#ifndef USE_MSAA
 			float2	sampleTC	= tc * 0.5 + pos_decompression_params2.zw * arr[i] * offset;
-			float2	sampleData	= s_occ.Sample(smp_linear, sampleTC);
+			float2	sampleData	= s_occ.Sample(smp_linear, sampleTC).xy;
 			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
 		#else
-			int2	sampleTC	= tc * 0.5 + int2(arr[i]) * offset;
-			float2	sampleData	= s_occ.Load(int2(sampleTC), iSample).xx;
+			int2	sampleTC	= tc * 0.5 * pos_decompression_params2.xy + int2(arr[i]) * offset;
+			float2	sampleData	= s_occ.Load(int2(sampleTC), iSample).xy;
 			if (saturate(sampleData.r) <= 0) sampleData.r = 1;
 		#endif
 		 	
@@ -62,22 +62,15 @@ float blur_sample ( float fOcclusion, float centerDepth, float2 arr[4], float of
 	return fOcclusion /= lSumWeight;   
 }
 
-#ifndef USE_MSAA
-float ssao_blur_ps(float2 centerTC)
+float ssao_blur_ps(float2 centerTC, int iSample)
 {
-	int iSample = 0;
-#else
-float ssao_blur_ps(int2 centerTC, int iSample)
-{
-#endif
 	// low weight center sample - will be used on edges
 	// float  fSumWeight = 0.025f;
 	float  fSumWeight = 0.1f;
 #ifndef USE_MSAA
-	float2 centerData = s_occ.Sample( smp_linear, (centerTC) * 0.5);
-	float2 centerPosZ = s_position.Sample( smp_linear, (centerTC)).z;
+	float2 centerData = s_occ.Sample( smp_linear, centerTC * 0.5).xy;
 #else
-	float2 centerData = s_occ.Load( int2(centerTC * 0.5), iSample).xx;
+	float2 centerData = s_occ.Load( int2(centerTC * 0.5 * pos_decompression_params2.xy), iSample).xy;
 #endif
 	if (saturate(centerData.r) <= 0) centerData.r = 1;
 
@@ -87,7 +80,5 @@ float ssao_blur_ps(int2 centerTC, int iSample)
 	fOcclusion	+= blur_sample(centerData.r * fSumWeight, centerDepth, arrOffsets2, 2.0, centerTC, iSample) * 2 / 8;
 	fOcclusion	+= blur_sample(centerData.r * fSumWeight, centerDepth, arrOffsets1, 2.0, centerTC, iSample) * 1 / 8;
 
-  // return centerData.r;
   return fOcclusion;
-  return (centerTC.x < 0.5 ? centerData.x : fOcclusion * 8 / 8);
 }

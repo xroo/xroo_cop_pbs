@@ -25,12 +25,12 @@
 //normalV = view normal
 //cTexCoord = texture coordinates
 //based on: https://www.activision.com/cdn/research/Practical_Real_Time_Strategies_for_Accurate_Indirect_Occlusion_NEW%20VERSION_COLOR.pdf
-half3 unpack_position(half2 tc)
+half3 unpack_position(half2 tc, uint iSample)
 {
 #ifndef USE_MSAA
 	half depth = s_position.Sample( smp_nofilter, tc ).z;
 #else
-	half depth = s_position.Load( int2( tc * pos_decompression_params2.xy ),0 ).z;
+	half depth = s_position.Load( int2( tc * pos_decompression_params2.xy ), iSample ).z;
 #endif
 	return gbuf_unpack_position((depth > 0.01 ? depth : 1000.0), tc * pos_decompression_params2.xy );
 }
@@ -48,10 +48,12 @@ half GTAO_Noise(half2 position)
 
 #ifndef USE_MSAA
 float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, float4 pos2d )
+{
+	uint iSample = 0;
 #else
 float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, float4 pos2d, uint iSample )
-#endif
 {
+#endif
 	float fov = atan(1.0 / m_P._m11);
 	float proj_scale = float(pos_decompression_params2.y) / (tan(fov * 0.5) * 2.0);
 	float screen_radius = (GTAO_RADIUS * 0.5 * proj_scale) / cPosV.z;
@@ -91,7 +93,7 @@ float2	calc_ssao( float3 cPosV, float3 normalV, float2 cTexCoord, float2 tcJ, fl
 
                 float2 s = max( screen_radius * (half(sample) + noiseOffset), 4 + half(sample)) * screen_res_mul; // fix for multiplying s by sample=0 from Unity code
                 float2 sTexCoord = cTexCoord + (-1.0 + 2.0 * side) * s * float2(omega.x, -omega.y);
-                float3 sPosV = unpack_position(sTexCoord);
+                float3 sPosV = unpack_position(sTexCoord, iSample);
                 float3 sHorizonV = sPosV - cPosV;
                 float falloff = saturate(dot(sHorizonV, sHorizonV) * falloff_mul);
                 float H = dot(normalize(sHorizonV), viewV);

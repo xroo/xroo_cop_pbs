@@ -61,6 +61,7 @@ _out main ( _input I )
 _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 #endif
 {
+
 	gbuffer_data	gbd = gbuffer_load_data( GLD_P(I.tc0.xy, I.pos2d.xy, ISAMPLE) );
 	
 	// Sample the buffers:
@@ -74,11 +75,6 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 #endif
 
 	//  Calculate SSAO
-
-#ifdef USE_MSAA
-	int2	texCoord = I.pos2d.xy;
-#endif
-	
 
 #ifdef USE_HDAO
 #	ifdef SM_5
@@ -100,11 +96,7 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 #	else // USE_HBAO
 
 #		ifdef USE_SSAO_BLUR	
-#			ifndef USE_MSAA
-	float	occ = ssao_blur_ps(I.tc0);
-#			else
-	float   occ = ssao_blur_ps( texCoord, ISAMPLE );
-#			endif
+	float   occ = ssao_blur_ps( I.tc0, ISAMPLE );
 #		else
 	float2	occ = calc_ssao( CS_P(P, N, I.tc0, I.tcJ, I.pos2d, ISAMPLE ) );
 #		endif // USE_SSAO_BLUR
@@ -126,7 +118,7 @@ _out main ( _input I, uint iSample : SV_SAMPLEINDEX )
 
 //	color 		= N * 0.5 + 0.5;	//show normals
 //	color 		= N.w;				//show hemi
-//	color 		= occ;				//show occlusion
+//	color 		= occ.xxx;				//show occlusion
 
         _out        	o;
 
