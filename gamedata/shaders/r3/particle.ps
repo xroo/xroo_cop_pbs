@@ -43,6 +43,6 @@ float4 main( v2p I ) : SV_Target
 	clip(result.a-(0.01f/255.0f));
 	//clip(result.a-0.5);
 
-			result.rgb	/= ( 1 + result.rgb );	// tonemap for LDR toning
+			result.rgb	=  tonemap(result, 1).rgb;	// tonemap for LDR toning
 	return	result;
 }

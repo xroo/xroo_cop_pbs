@@ -46,7 +46,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 
 	float3	Nw	= mul (float3x3(I.M1, I.M2, I.M3), Navg);
 			Nw	= normalize (Nw);
-	float3	N	= mul(m_V, float4(Nw, 1)).xyz;
+	float3	N	= mul(m_V, float4(Nw, 0)).xyz;
 	float3  P	= mul(m_V, float4(I.v2point + eye_position, 1)).xyz;
 
 	float3	v2point		= normalize (I.v2point);
@@ -73,7 +73,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 #endif
 
 #ifdef PBR_IRRADIENCE_IN_SSLR
-	gbuffer_data	sslrGBD	=  gbuffer_load_data( GLD_P(sslr.xy, pos2d.xy, 0) );
+	gbuffer_data	sslrGBD	=  gbuffer_load_data( GLD_P(sslr, pos2d, 0) );
 	float3	sslrNW			=  mul( (float3x3)m_v2w, sslrGBD.N );
 	float3	sslrEnv0		=  s_env0.Sample( smp_rtlinear, cubify_normals(sslrGBD.N)).rgb;
 	float3	sslrEnv1		=  s_env1.Sample( smp_rtlinear, cubify_normals(sslrGBD.N)).rgb;
@@ -144,7 +144,7 @@ float4 main( vf I, float4 pos2d : SV_Position ) : SV_Target
 	half	tm_scale	= I.c0.w;
 
 			alpha		*= I.fog*I.fog;
-			final		= tonemap(final, tm_scale).xyz;
+			final		= tonemap(final, tm_scale).rgb;
 
 	return	float4  	(final, alpha );
 
