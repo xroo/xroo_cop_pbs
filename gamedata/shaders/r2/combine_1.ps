@@ -87,11 +87,8 @@ _out	main		( _input I )
 
         _out        	o;
 
-						color			*= tm_scale;
-        				// o.low			= color.rgbb;
-						o.low 			= color.rgbb / ( 1 + color.rgbb ) ;
-        				o.high			= color.rgbb / def_hdr;
-                        o.low.a         = skyblend	;
+		tonemap			(o.low, o.high, color, tm_scale );
+						o.low.a			= skyblend	;
 						o.high.a		= skyblend	;
 
 		return        	o;

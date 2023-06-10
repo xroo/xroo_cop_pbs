@@ -18,39 +18,19 @@ uniform samplerCUBE     s_sky1      : register(s1)	;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Pixel
-#if 1
 _out         main               ( v2p I )
 {
  	half3	s0		=  texCUBE(s_sky0,I.tc0);
  	half3	s1		=  texCUBE(s_sky1,I.tc1);
 	half3	sky		=  I.factor * lerp(s0,s1,I.factor.w);
 			sky		=  sky_adjust(sky);
-			sky		*= 0.5f;
         // final tone-mapping
         _out        	o;
 #ifdef        USE_VTF
-        o.low        	=		sky.xyzz / ( 1 + sky.xyzz);
-        o.high        	=		o.low/def_hdr	;
+		half    scale	= 1;
 #else
         half    scale   = tex2D(s_tonemap,half2(.5h,.5h)).x;
-        tonemap        	(o.low, o.high, sky, scale*2.0 );
 #endif
+        tonemap        	(o.low, o.high, sky, scale );
         return        	o;
 }
-#else
-_out         main               ( v2p I )
-{
- 	half3	s0		=  texCUBE(s_sky0,I.tc0);
- 	half3	s1		=  texCUBE(s_sky1,I.tc1);
-	half3	sky		=  I.factor * lerp(s0,s1,I.factor.w);
-			sky		=  sky_adjust(sky);
-			sky		*= 0.5f;
-
-    // final tone-mapping
-	_out        	o;
-	half	scale	= 1 + tex2D(s_tonemap,half2(.5h,.5h)).x;
-		    o.low	= sky.xyzz * scale / ( 1 + sky.xyzz);
-		    o.high	= o.low/def_hdr;
-		    return	o;
-}
-#endif

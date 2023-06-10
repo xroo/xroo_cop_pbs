@@ -12,6 +12,6 @@ struct 	v2p
 half4 	main( v2p I )	: COLOR
 {
 	float4	result		=  I.c.a * tex2D(s_base,I.tc0).a;
-			result.rgb	/= ( 1 + result.rgb );	// tonemap for LDR toning
+			result.rgb	=  tonemap(result, tm_scale).rgb;	// tonemap for LDR toning
 	return	result;
 }

@@ -103,7 +103,10 @@ half4   main( vf I )          : COLOR
 #endif	//	USE_SOFT_WATER
 
 #endif	//	NEED_SOFT_WATER
-			alpha	*= I.fog*I.fog;
-			final	/= (1 + final);
-	return	half4	(final, alpha);
+	half	tm_scale	= I.c0.w;
+
+			alpha		*= I.fog*I.fog;
+			final		= tonemap(final, tm_scale).rgb;
+
+	return	float4  	(final, alpha );
 }
